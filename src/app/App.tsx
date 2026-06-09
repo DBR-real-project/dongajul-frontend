@@ -73,7 +73,17 @@ export default function App() {
     if (!token) return;
 
     try {
-      const payload = JSON.parse(atob(token.split('.')[1]));
+      // atob()는 Latin-1로 디코딩 → 한글(UTF-8 멀티바이트) 깨짐
+      // base64url → base64 변환 후 UTF-8로 올바르게 디코딩
+      const base64 = token.split('.')[1].replace(/-/g, '+').replace(/_/g, '/');
+      const payload = JSON.parse(
+        decodeURIComponent(
+          atob(base64)
+            .split('')
+            .map(c => '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2))
+            .join('')
+        )
+      );
 
       const user = {
         id: payload.user_id,
@@ -85,11 +95,18 @@ export default function App() {
       localStorage.setItem('user', JSON.stringify(user));
       localStorage.setItem('userName', user.name || user.email || '사용자');
 
+      // 소셜 로그인 refresh token 저장
+      const refreshToken = params.get('refresh_token');
+      if (refreshToken) {
+        localStorage.setItem('refresh_token', refreshToken);
+      }
+
       setIsLoggedIn(true);
       window.history.replaceState({}, '', '/');
     } catch (e) {
       console.error('토큰 파싱 실패:', e);
       localStorage.removeItem('token');
+      localStorage.removeItem('refresh_token');
       localStorage.removeItem('user');
       localStorage.removeItem('userName');
     }
@@ -136,7 +153,17 @@ export default function App() {
   };
 
   const handleLogout = () => {
+    // 서버 측 refresh token 무효화 (fire-and-forget)
+    const user = JSON.parse(localStorage.getItem('user') || '{}');
+    if (user?.id) {
+      fetch('http://localhost:3001/api/auth/logout', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ user_id: user.id }),
+      }).catch(() => {});
+    }
     localStorage.removeItem('token');
+    localStorage.removeItem('refresh_token');
     localStorage.removeItem('user');
     localStorage.removeItem('userName');
     setIsLoggedIn(false);

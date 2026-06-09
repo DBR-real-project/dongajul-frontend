@@ -14,6 +14,7 @@ import { NotificationView } from './components/NotificationView';
 import { ProfileView } from './components/ProfileView';
 import { CompareView } from './components/CompareView';
 import { SemanticMap } from './components/SemanticMap';
+import { SubscriptionPage } from './components/SubscriptionPage';
 
 export type ViewType =
   | 'dashboard'
@@ -27,7 +28,8 @@ export type ViewType =
   | 'notifications'
   | 'profile'
   | 'result'
-  | 'semantic-map';
+  | 'semantic-map'
+  | 'subscription';
 
 export type TabType = 'dashboard' | 'strategy' | 'history';
 
@@ -192,7 +194,7 @@ export default function App() {
         onLogin={handleLogin}
         onSocialLogin={handleSocialLogin}
         onSignupClick={() => setShowSignup(true)}
-        onForgotPassword={() => {}}
+        onForgotPassword={() => { }}
       />
     );
   }
@@ -270,16 +272,6 @@ export default function App() {
             <SemanticMap
               darkMode={darkMode}
               onBack={() => setCurrentView(previousView || 'dashboard')}
-              queryPoint={diagnosisResult ? {
-                umap_x: (diagnosisResult as any).umap_x,
-                umap_y: (diagnosisResult as any).umap_y,
-                cluster_name: diagnosisResult.cluster_name,
-              } : null}
-            />
-          ) : currentView === 'semantic-map' ? (
-            <SemanticMap
-              darkMode={darkMode}
-              onBack={() => setCurrentView(previousView || 'dashboard')}
               queryPoint={diagnosisResult?.query_umap_x != null ? {
                 umap_x: diagnosisResult.query_umap_x!,
                 umap_y: diagnosisResult.query_umap_y!,
@@ -301,6 +293,8 @@ export default function App() {
               onBack={() => setCurrentView('dashboard')}
               darkMode={darkMode}
             />
+          ) : currentView === 'subscription' ? (
+            <SubscriptionPage />
           ) : (
             <EnterpriseDashboard
               darkMode={darkMode}
@@ -317,4 +311,3 @@ export default function App() {
     </div>
   );
 }
- 

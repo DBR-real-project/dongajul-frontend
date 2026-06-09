@@ -143,6 +143,17 @@ export function TopNavigation({
         </button>
 
         <button
+  onClick={() => onViewChange('subscription')}
+  className={`px-4 py-2 rounded-lg text-xs font-bold transition-all ${
+    darkMode
+      ? 'bg-gradient-to-r from-indigo-600 to-purple-600 text-white hover:opacity-90'
+      : 'bg-gradient-to-r from-indigo-500 to-purple-500 text-white hover:opacity-90'
+  }`}
+>
+  {language === 'ko' ? '구독' : 'Upgrade'}
+</button>
+
+        <button
           onClick={onToggleDarkMode}
           className={`p-2 ${darkMode ? 'hover:bg-gray-800 text-gray-400' : 'hover:bg-gray-100 text-gray-600'} rounded-lg transition-colors`}
           title={language === 'ko' ? '테마 전환' : 'Toggle theme'}

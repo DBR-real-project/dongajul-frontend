@@ -58,12 +58,12 @@ export function ProfileView({ onBack, darkMode = false }: ProfileViewProps) {
     const savedName = localStorage.getItem('userName');
     if (savedName) return savedName;
     const savedUser = localStorage.getItem('user');
-    return savedUser ? JSON.parse(savedUser).nickname : '';
+    try { return savedUser ? JSON.parse(savedUser).nickname : ''; } catch { return ''; }
   });
 
   const [editEmail, setEditEmail] = useState(() => {
     const savedUser = localStorage.getItem('user');
-    return savedUser ? JSON.parse(savedUser).email : '';
+    try { return savedUser ? JSON.parse(savedUser).email : ''; } catch { return ''; }
   });
   const [subscriptionInfo, setSubscriptionInfo] = useState<SubscriptionInfo | null>(null);
 

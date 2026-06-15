@@ -1,174 +1,288 @@
-import { ArrowLeft } from 'lucide-react';
-import React, { useState } from 'react';
-import { useArticleCount } from '../utils/articleCount';
+'use client';
 
-interface SignupScreenProps {
-  onSignup: (email: string, token: string) => void;
-  onBackToLogin: () => void;
+import { useState, useEffect } from 'react';
+import { useArticleCount } from '../utils/articleCount';
+import { X, ArrowLeft } from 'lucide-react'; // 필요한 아이콘 임포트
+
+interface SubscriptionPageProps {
+  onStartBasic: () => void;
+  onSubscribe: () => void;
+  darkMode?: boolean;
 }
 
-export function SignupScreen({ onSignup, onBackToLogin }: SignupScreenProps) {
+export function SubscriptionPage({ onStartBasic, onSubscribe, darkMode = false }: SubscriptionPageProps) {
   const articleCount = useArticleCount();
-  const [name, setName] = useState('');
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [confirmPassword, setConfirmPassword] = useState('');
-  const [agreeTerms, setAgreeTerms] = useState(false);
-  const [error, setError] = useState('');
+  const dm = darkMode;
+  const [currentPlan, setCurrentPlan] = useState<string>('free');
+  
+  // 🌟 모달 열림/닫힘 상태 관리
+  const [showContactModal, setShowContactModal] = useState(false);
 
-  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
-    setError('');
+  // 🌟 문의하기 폼 필드 상태 관리
+  const [contactForm, setContactForm] = useState({
+    name: '',
+    email: '',
+    message: ''
+  });
 
-    if (!name.trim()) { setError('이름을 입력해주세요.'); return; }
-    if (!email.trim() || !email.includes('@')) { setError('올바른 이메일을 입력해주세요.'); return; }
-    if (password.length < 6) { setError('비밀번호는 최소 6자 이상이어야 합니다.'); return; }
-    if (password !== confirmPassword) { setError('비밀번호가 일치하지 않습니다.'); return; }
-    if (!agreeTerms) { setError('이용약관에 동의해주세요.'); return; }
-
+  useEffect(() => {
     try {
-      const res = await fetch('http://localhost:3001/api/auth/register', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, password, name }),
-      });
-      const data = await res.json();
-      if (res.ok) {
-        localStorage.setItem('token', data.token);
-        if (data.refresh_token) {
-          localStorage.setItem('refresh_token', data.refresh_token);
-        }
-        localStorage.setItem('user', JSON.stringify(data.user));
-        onSignup(data.user.email, data.token);
-      } else {
-        setError(data.message || '회원가입 실패');
-      }
-    } catch (err) {
-      console.error(err);
-      setError('서버에 연결할 수 없습니다. 잠시 후 다시 시도해주세요.');
-    }
+      const user = JSON.parse(localStorage.getItem('user') || '{}');
+      setCurrentPlan(user.subscription_type || 'free');
+    } catch {}
+  }, []);
+
+  // 🌟 문의 신청 처리 핸들러
+  const handleContactSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    alert('동아줄 영업팀에 문의가 성공적으로 전달되었습니다. 담당자가 곧 연락드리겠습니다!');
+    setShowContactModal(false);
+    setContactForm({ name: '', email: '', message: '' });
   };
 
   return (
-    <div className="fixed inset-0 grid grid-cols-[1.618fr_1fr] bg-[#142755] relative overflow-hidden">
-      <div className="absolute inset-0">
-        <img
-          src="https://images.unsplash.com/photo-1551288049-bebda4e38f71?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&q=80&w=1920"
-          alt="Analytics Dashboard Background"
-          className="w-full h-full object-cover opacity-20"
-        />
-        <div className="absolute inset-0 bg-gradient-to-tr from-[#0f1d3e] via-[#142755]/90 to-[#1d3573]/80"></div>
-      </div>
+    <div className={`min-h-screen py-20 px-4 flex flex-col items-center justify-center font-sans ${dm ? 'bg-[#0A0E1A]' : 'bg-gray-50'}`}>
 
-      <div className="relative z-10 flex flex-col justify-center px-12 lg:px-20">
-        <h1 className="text-6xl font-extrabold tracking-tight text-white mb-4">
-          동아줄 <span className="text-[#E5BA73]">AI</span>
+      {/* 상단 타이틀 */}
+      <div className="text-center mb-16">
+        <h1 className={`text-3xl md:text-4xl font-bold mb-4 ${dm ? 'text-white' : 'text-slate-900'}`}>
+          비즈니스에 맞는 진단 플랜을 선택하세요
         </h1>
-        <p className="text-2xl font-medium text-gray-300 mb-8">AI 전략 리스크 진단 플랫폼</p>
-        <p className="text-lg text-blue-100/90 max-w-xl leading-relaxed font-light">
-          {articleCount}건 <span className="text-[#E5BA73] font-medium">성공·실패 사례</span>를 바탕으로
-          <br />
-          당신의 전략 리스크를 <span className="text-[#E5BA73] font-medium">AI가 정확히 진단</span>합니다.
+        <p className={dm ? 'text-gray-400' : 'text-gray-500'}>
+          {articleCount}건의 DBR·HBR 사례 기반 AI 분석으로 전략의 실패 리스크를 최소화하세요.
         </p>
       </div>
 
-      <div className="absolute top-1/4 left-1/3 w-96 h-96 bg-[#E5BA73]/10 rounded-full blur-3xl"></div>
-      <div className="absolute bottom-1/4 left-1/4 w-96 h-96 bg-purple-500/10 rounded-full blur-3xl"></div>
+      {/* 3단 카드 컨테이너 */}
+      <div className="flex flex-col md:flex-row items-center md:items-stretch gap-6 max-w-6xl">
 
-      <div className="relative z-10 flex items-center justify-center p-8 bg-black/5 backdrop-blur-sm">
-        <div className="bg-white rounded-2xl shadow-2xl p-8 w-full max-w-md border border-white/10">
-          <button
-            onClick={onBackToLogin}
-            className="flex items-center gap-2 text-gray-500 hover:text-[#142755] mb-6 transition-colors group"
-          >
-            <ArrowLeft className="w-4 h-4 transition-transform group-hover:-translate-x-1" />
-            <span className="text-sm font-medium">로그인으로 돌아가기</span>
-          </button>
-
-          <div className="text-center mb-6">
-            <h2 className="text-3xl font-bold mb-2 text-gray-900 tracking-tight">회원가입</h2>
-            <p className="text-sm text-gray-500">동아줄 AI와 함께 전략 리스크를 진단하세요</p>
+        {/* 1. Basic 플랜 */}
+        <div className={`w-[320px] p-8 rounded-[24px] shadow-sm border flex flex-col transition-all duration-300 hover:-translate-y-3 hover:shadow-xl cursor-pointer ${dm ? 'bg-[#111827] border-gray-700' : 'bg-white border-gray-200'}`}>
+          <h2 className={`text-xl font-bold mb-4 ${dm ? 'text-gray-200' : 'text-slate-700'}`}>베이직</h2>
+          <p className={`mb-6 text-sm ${dm ? 'text-gray-400' : 'text-gray-500'}`}>
+            기본적인 비즈니스 전략 방향성 점검
+          </p>
+          <div className={`text-3xl font-bold mb-6 ${dm ? 'text-white' : 'text-slate-800'}`}>
+            무료
           </div>
+          <button
+            onClick={onStartBasic}
+            className="w-full bg-[#E6B767] text-white py-3 rounded-xl font-bold transition hover:opacity-90 active:scale-95 mb-8"
+          >
+            시작하기
+          </button>
+          <ul className={`space-y-4 text-sm flex-grow ${dm ? 'text-gray-400' : 'text-slate-600'}`}>
+            <li className="flex items-start gap-2">
+              <span className={dm ? 'text-gray-500' : 'text-gray-400'}>✓</span>
+              <span>선택 산업군 기반 기본 리스크 진단</span>
+            </li>
+            <li className="flex items-start gap-2">
+              <span className={dm ? 'text-gray-500' : 'text-gray-400'}>✓</span>
+              <span>DBR·HBR 핵심 유사 사례 매칭 (제한적)</span>
+            </li>
+            <li className="flex items-start gap-2">
+              <span className={dm ? 'text-gray-500' : 'text-gray-400'}>✓</span>
+              <span>기본 진단 요약 리포트 제공</span>
+            </li>
+          </ul>
+        </div>
 
-          {error && (
-            <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg text-sm text-red-600 font-medium">
-              {error}
+        {/* 2. Premium 플랜 */}
+        <div className="relative w-[350px] p-[2px] rounded-[26px] bg-gradient-to-br from-[#4285f4] via-[#9b72cb] to-[#d96570] shadow-2xl z-10 transition-all duration-300 hover:-translate-y-3 hover:shadow-[0_20px_40px_-15px_rgba(155,114,203,0.5)] cursor-pointer">
+          <div className={`p-8 rounded-[24px] h-full flex flex-col ${dm ? 'bg-[#111827]' : 'bg-white'}`}>
+            <div className="flex items-center gap-2 mb-4">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path d="M11.666 0C11.666 6.136 6.636 11.166 0.5 11.166H0V12.833H0.5C6.636 12.833 11.666 17.863 11.666 23.999V24.5H13.333V23.999C13.333 17.863 18.363 12.833 24.499 12.833H24.999V11.166H24.499C18.363 11.166 13.333 6.136 13.333 0V-0.5H11.666V0Z" fill="url(#paint_gemini)"/>
+                <defs>
+                  <linearGradient id="paint_gemini" x1="0" y1="12" x2="25" y2="12" gradientUnits="userSpaceOnUse">
+                    <stop stopColor="#4285F4"/>
+                    <stop offset="0.5" stopColor="#9B72CB"/>
+                    <stop offset="1" stopColor="#D96570"/>
+                  </linearGradient>
+                </defs>
+              </svg>
+              <h2 className="text-xl font-bold bg-gradient-to-r from-[#4285f4] via-[#9b72cb] to-[#d96570] bg-clip-text text-transparent">
+                프리미엄 (추천)
+              </h2>
             </div>
-          )}
-
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <div>
-              <label className="block mb-1.5 text-sm text-gray-700 font-medium">
-                이름 <span className="text-[#E5BA73]">*</span>
-              </label>
-              <input
-                type="text"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                placeholder="홍길동"
-                className="w-full px-4 py-2.5 bg-white border border-gray-300 rounded-lg text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[#142755] focus:border-transparent transition-all"
-              />
-            </div>
-            <div>
-              <label className="block mb-1.5 text-sm text-gray-700 font-medium">
-                이메일 <span className="text-[#E5BA73]">*</span>
-              </label>
-              <input
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                placeholder="example@company.com"
-                className="w-full px-4 py-2.5 bg-white border border-gray-300 rounded-lg text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[#142755] focus:border-transparent transition-all"
-              />
-            </div>
-            <div>
-              <label className="block mb-1.5 text-sm text-gray-700 font-medium">
-                비밀번호 <span className="text-[#E5BA73]">*</span>
-              </label>
-              <input
-                type="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                placeholder="최소 6자 이상"
-                className="w-full px-4 py-2.5 bg-white border border-gray-300 rounded-lg text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[#142755] focus:border-transparent transition-all"
-              />
-            </div>
-            <div>
-              <label className="block mb-1.5 text-sm text-gray-700 font-medium">
-                비밀번호 확인 <span className="text-[#E5BA73]">*</span>
-              </label>
-              <input
-                type="password"
-                value={confirmPassword}
-                onChange={(e) => setConfirmPassword(e.target.value)}
-                placeholder="비밀번호를 다시 입력하세요"
-                className="w-full px-4 py-2.5 bg-white border border-gray-300 rounded-lg text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[#142755] focus:border-transparent transition-all"
-              />
-            </div>
-            <div className="flex items-start pt-1">
-              <input
-                id="agree-terms"
-                type="checkbox"
-                checked={agreeTerms}
-                onChange={(e) => setAgreeTerms(e.target.checked)}
-                className="w-4 h-4 mt-0.5 rounded border-gray-300 text-[#142755] focus:ring-[#142755] cursor-pointer"
-              />
-              <label
-                htmlFor="agree-terms"
-                className="ml-2 text-sm text-gray-600 cursor-pointer select-none"
-              >
-                이용약관 및 개인정보 처리방침에 동의합니다
-              </label>
+            <p className={`mb-6 text-sm ${dm ? 'text-gray-400' : 'text-gray-500'}`}>
+              심층 리스크 분석과 맞춤형 전략 인사이트
+            </p>
+            <div className={`text-3xl font-bold mb-6 ${dm ? 'text-white' : 'text-slate-800'}`}>
+              ₩9,900 <span className={`text-lg font-normal ${dm ? 'text-gray-500' : 'text-gray-400'}`}>/ 월</span>
             </div>
             <button
-              type="submit"
-              className="w-full bg-[#142755] hover:bg-[#1f3a7a] text-white py-3 rounded-lg font-semibold transition-all shadow-lg hover:shadow-xl mt-6 tracking-wide"
+              onClick={currentPlan === 'premium' ? undefined : onSubscribe}
+              disabled={currentPlan === 'premium'}
+              className={`w-full bg-gradient-to-r from-[#4285f4] via-[#9b72cb] to-[#d96570] text-white py-3 rounded-xl font-bold transition shadow-md mb-8 ${
+                currentPlan === 'premium'
+                  ? 'opacity-60 cursor-not-allowed'
+                  : 'hover:opacity-90 active:scale-95'
+              }`}
             >
-              회원가입 완료
+              {currentPlan === 'premium' ? '현재 구독 중 ✓' : '구독하기'}
             </button>
-          </form>
+            <ul className={`space-y-4 text-sm flex-grow font-medium ${dm ? 'text-gray-300' : 'text-slate-700'}`}>
+              <li className="flex items-start gap-2">
+                <span className="text-[#9b72cb] shrink-0">✓</span>
+                <span>{articleCount}건 사례 데이터 딥다이브 분석</span>
+              </li>
+              <li className="flex items-start gap-2">
+                <span className="text-[#9b72cb] shrink-0">✓</span>
+                <span>상세 실패 패턴 및 시맨틱 맵 제공</span>
+              </li>
+              <li className="flex items-start gap-2">
+                <span className="text-[#9b72cb] shrink-0">✓</span>
+                <span>산업군 맞춤형 해결책 및 액션 플랜</span>
+              </li>
+              <li className="flex items-start gap-2">
+                <span className="text-[#9b72cb] shrink-0">✓</span>
+                <span>진단 이력 무제한 보관 및 시계열 비교</span>
+              </li>
+            </ul>
+          </div>
         </div>
+
+        {/* 3. Enterprise 플랜 */}
+        <div className={`w-[320px] p-8 rounded-[24px] shadow-sm border flex flex-col transition-all duration-300 hover:-translate-y-3 hover:shadow-xl cursor-pointer ${dm ? 'bg-[#111827] border-gray-700' : 'bg-white border-gray-200'}`}>
+          <h2 className={`text-xl font-bold mb-4 ${dm ? 'text-gray-200' : 'text-slate-700'}`}>엔터프라이즈</h2>
+          <p className={`mb-6 text-sm ${dm ? 'text-gray-400' : 'text-gray-500'}`}>
+            전사적 리스크 관리 및 사내 데이터 연동
+          </p>
+          <div className={`text-3xl font-bold mb-6 ${dm ? 'text-white' : 'text-slate-800'}`}>
+            별도 문의
+          </div>
+          {/* 🌟 변경된 핵심 트리거: 이메일 링크 대신 모달 활성화 버튼 배치 */}
+          <button
+            type="button"
+            onClick={() => setShowContactModal(true)}
+            className={`w-full py-3 rounded-xl font-bold transition hover:opacity-90 mb-8 active:scale-95 block text-center text-white ${dm ? 'bg-gray-700 hover:bg-gray-600' : 'bg-[#0B1931]'}`}
+          >
+            영업팀 문의
+          </button>
+          <ul className={`space-y-4 text-sm flex-grow ${dm ? 'text-gray-400' : 'text-slate-600'}`}>
+            <li className="flex items-start gap-2">
+              <span className={`font-bold shrink-0 ${dm ? 'text-gray-300' : 'text-slate-900'}`}>✓</span>
+              <span>프리미엄 플랜의 모든 기능 포함</span>
+            </li>
+            <li className="flex items-start gap-2">
+              <span className={`font-bold shrink-0 ${dm ? 'text-gray-300' : 'text-slate-900'}`}>✓</span>
+              <span>사내 비즈니스 데이터 연동 (API 지원)</span>
+            </li>
+            <li className="flex items-start gap-2">
+              <span className={`font-bold shrink-0 ${dm ? 'text-gray-300' : 'text-slate-900'}`}>✓</span>
+              <span>부서별 통합 대시보드 및 전담 매니저</span>
+            </li>
+          </ul>
+        </div>
+
       </div>
+
+      {/* 🌟 🌟 🌟 동아줄 전용 2단 분할형 수려한 영업팀 문의 모달 창 🌟 🌟 🌟 */}
+      {showContactModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fade-in">
+          
+          {/* 모달 박스 전체 컨테이너 (최대 너비를 max-w-5xl로 조율하여 황금거리 적용) */}
+          <div className="relative w-full max-w-4xl bg-[#060B18] rounded-[26px] shadow-2xl p-8 md:p-12 border border-white/10 overflow-hidden text-white">
+            
+            {/* 배경 그라데이션 및 디자인 조명 동기화 */}
+            <div className="absolute inset-0 bg-gradient-to-br from-[#060B16] via-[#0B1528] to-[#11203E] pointer-events-none z-0"></div>
+            <div className="absolute top-1/4 left-1/4 w-72 h-72 bg-[#E5BA73]/5 rounded-full blur-3xl pointer-events-none z-0"></div>
+
+            {/* 상단 닫기 우측 정렬 버튼 */}
+            <button 
+              onClick={() => setShowContactModal(false)}
+              className="absolute top-5 right-5 z-20 p-2 rounded-full text-gray-400 hover:text-white hover:bg-white/10 transition"
+            >
+              <X className="w-5 h-5" />
+            </button>
+
+            {/* 2단 그리드 본체 (거리 감축 완료) */}
+            <div className="relative z-10 grid grid-cols-1 md:grid-cols-[1.1fr_1fr] gap-8 lg:gap-14 items-center">
+              
+              {/* 왼쪽 분할 영역: 브랜드 정체성 표기 */}
+              <div className="text-center md:text-left">
+                <h3 className="text-3xl md:text-4xl font-extrabold tracking-tight mb-2">
+                  동아줄 <span className="text-[#E5BA73]">AI</span>
+                </h3>
+                <p className="text-base font-medium text-gray-300 mb-6 tracking-wide">AI 전략 리스크 진단 플랫폼</p>
+                <p className="text-xs md:text-sm text-slate-400 leading-relaxed font-light max-w-sm mx-auto md:mx-0">
+                  <span className="text-slate-300 font-medium">DBR·HBR</span> <span className="text-amber-400/90 font-medium">{articleCount}건 성공·실패 사례</span>를 분석해
+                  <br />
+                  당신의 비즈니스 전략이 가진 <span className="text-amber-400/90 font-medium">리스크를 정확히 진단</span>합니다.
+                </p>
+              </div>
+
+              {/* 오른쪽 분할 영역: 화이트 컴팩트 폼 박스 */}
+              <div className="flex justify-center md:justify-end w-full">
+                <div className="bg-white rounded-[24px] p-6 md:p-8 w-full max-w-[390px] text-slate-900 shadow-xl border border-gray-100">
+                  
+                  {/* 모달 폼 상단 라벨 */}
+                  <div className="text-center mb-5">
+                    <h4 className="text-xl font-bold mb-1 text-gray-900 tracking-tight">영업팀 문의하기</h4>
+                    <p className="text-xs text-gray-400 font-medium">엔터프라이즈 도입 및 데이터 연동 상담</p>
+                  </div>
+
+                  <form onSubmit={handleContactSubmit} className="space-y-3.5">
+                    <div>
+                      <label className="block mb-1 text-xs text-slate-700 font-bold">
+                        회사명 / 이름 <span className="text-amber-500">*</span>
+                      </label>
+                      <input
+                        type="text"
+                        required
+                        value={contactForm.name}
+                        onChange={(e) => setContactForm({ ...contactForm, name: e.target.value })}
+                        placeholder="동아줄테크 / 홍길동"
+                        className="w-full px-4 py-2 bg-white border border-gray-200 rounded-xl text-sm text-slate-900 placeholder-gray-300 focus:outline-none focus:ring-2 focus:ring-[#142755] focus:border-transparent transition-all"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block mb-1 text-xs text-slate-700 font-bold">
+                        회신받을 이메일 <span className="text-amber-500">*</span>
+                      </label>
+                      <input
+                        type="email"
+                        required
+                        value={contactForm.email}
+                        onChange={(e) => setContactForm({ ...contactForm, email: e.target.value })}
+                        placeholder="example@company.com"
+                        className="w-full px-4 py-2 bg-white border border-gray-200 rounded-xl text-sm text-slate-900 placeholder-gray-300 focus:outline-none focus:ring-2 focus:ring-[#142755] focus:border-transparent transition-all"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block mb-1 text-xs text-slate-700 font-bold">
+                        문의 내용 <span className="text-amber-500">*</span>
+                      </label>
+                      <textarea
+                        required
+                        rows={3}
+                        value={contactForm.message}
+                        onChange={(e) => setContactForm({ ...contactForm, message: e.target.value })}
+                        placeholder="인원 규모 및 연동이 필요한 사내 데이터 종류를 기재해 주세요."
+                        className="w-full px-4 py-2 bg-white border border-gray-200 rounded-xl text-sm text-slate-900 placeholder-gray-300 focus:outline-none focus:ring-2 focus:ring-[#142755] focus:border-transparent transition-all resize-none"
+                      />
+                    </div>
+
+                    {/* 제안하기 버튼 */}
+                    <button
+                      type="submit"
+                      className="w-full bg-[#142755] hover:bg-[#1f3a7a] text-white py-3 rounded-xl font-bold transition-all shadow-md active:scale-[0.98] mt-4 text-sm tracking-wide"
+                    >
+                      문의 신청하기
+                    </button>
+                  </form>
+
+                </div>
+              </div>
+
+            </div>
+          </div>
+        </div>
+      )}
+
     </div>
   );
 }

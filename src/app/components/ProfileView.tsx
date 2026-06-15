@@ -23,6 +23,11 @@ interface UserData {
   last_login_at?: string | null;
 }
 
+interface CancelSubscriptionModal {
+  isOpen: boolean;
+  isLoading: boolean;
+}
+
 interface LocalUser {
   nickname: string;
   email: string;
@@ -32,6 +37,7 @@ interface LocalUser {
 export function ProfileView({ onBack, darkMode = false }: ProfileViewProps) {
   const [activePanel, setActivePanel] = useState<SettingsPanel>(null);
   const [toast, setToast] = useState<string | null>(null);
+  const [cancelModal, setCancelModal] = useState<CancelSubscriptionModal>({ isOpen: false, isLoading: false });
 
   const [userData, setUserData] = useState<UserData | null>(() => {
     const saved = localStorage.getItem('user');
@@ -155,6 +161,40 @@ export function ProfileView({ onBack, darkMode = false }: ProfileViewProps) {
     }
   };
 
+  // 구독 취소
+  const handleCancelSubscription = async () => {
+    setCancelModal({ ...cancelModal, isLoading: true });
+    try {
+      const res = await apiFetch('/api/subscriptions/cancel', {
+        method: 'PATCH',
+      });
+      const data = await res.json();
+      if (data.success) {
+        // 사용자 정보 새로고침
+        try {
+          const profileRes = await apiFetch('/api/profile');
+          const profileData = await profileRes.json();
+          if (profileData.success && profileData.user) {
+            setUserData(profileData.user);
+            localStorage.setItem('user', JSON.stringify(profileData.user));
+            window.dispatchEvent(new Event('storage'));
+          }
+        } catch (err) {
+          console.error('프로필 새로고침 실패:', err);
+        }
+        showToast('구독이 취소되었습니다');
+        setCancelModal({ isOpen: false, isLoading: false });
+      } else {
+        showToast(data.message || '구독 취소 실패');
+        setCancelModal({ ...cancelModal, isLoading: false });
+      }
+    } catch (err) {
+      console.error('구독 취소 중 오류:', err);
+      showToast('서버 통신 중 오류가 발생했습니다');
+      setCancelModal({ ...cancelModal, isLoading: false });
+    }
+  };
+
   const dm = darkMode;
 
   return (
@@ -256,11 +296,18 @@ export function ProfileView({ onBack, darkMode = false }: ProfileViewProps) {
         <div className={`${dm ? 'bg-gray-800/40 border-gray-700/40' : 'bg-white border-slate-200'} p-5 rounded-2xl border shadow-sm flex items-center justify-between`}>
           <div>
             <h3 className={`text-xs font-bold uppercase tracking-wider mb-1 ${dm ? 'text-gray-400' : 'text-gray-500'}`}>구독 플랜</h3>
-            <div className={`text-sm font-bold uppercase ${dm ? 'text-white' : 'text-gray-900'} mb-0.5`}>{userData?.subscription_type || '-'}</div>
+            <div className="flex items-center gap-2">
+              <div className={`text-sm font-bold uppercase ${dm ? 'text-white' : 'text-gray-900'}`}>{userData?.subscription_type || '-'}</div>
+              {userData?.subscription_type && userData.subscription_type.toLowerCase() !== 'free' && (
+                <button
+                  onClick={() => setCancelModal({ ...cancelModal, isOpen: true })}
+                  className="px-3 py-1 bg-red-50 hover:bg-red-100 text-red-600 border border-red-200 text-xs rounded-xl font-bold transition-colors"
+                >
+                  해지
+                </button>
+              )}
+            </div>
           </div>
-          <span className="px-3 py-1 bg-emerald-50 text-emerald-700 border border-emerald-200 text-xs rounded-xl font-bold shadow-inner">
-            활성
-          </span>
         </div>
 
         <div className="text-center pt-2">
@@ -325,6 +372,55 @@ export function ProfileView({ onBack, darkMode = false }: ProfileViewProps) {
                     className="flex-1 py-2.5 bg-[#0B2F61] hover:bg-[#0d3875] text-white rounded-xl text-sm font-bold transition-colors shadow-md"
                   >
                     저장
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </>
+      )}
+
+      {/* 구독 취소 확인 모달 */}
+      {cancelModal.isOpen && (
+        <>
+          <div
+            className="fixed inset-0 bg-black/60 z-50 backdrop-blur-sm"
+            onClick={() => !cancelModal.isLoading && setCancelModal({ ...cancelModal, isOpen: false })}
+          />
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+            <div className={`w-full max-w-md ${dm ? 'bg-[#0d1220] border-gray-800' : 'bg-white border-slate-200'} rounded-2xl shadow-2xl border overflow-hidden`}>
+              {/* 모달 헤더 */}
+              <div className="bg-gradient-to-r from-red-600 to-red-700 px-6 py-4 flex items-center justify-between">
+                <h2 className="text-base font-bold text-white">구독 취소</h2>
+                <button
+                  onClick={() => !cancelModal.isLoading && setCancelModal({ ...cancelModal, isOpen: false })}
+                  disabled={cancelModal.isLoading}
+                  className="p-1.5 hover:bg-white/10 rounded-xl transition-all disabled:opacity-50"
+                >
+                  <X className="w-5 h-5 text-white" />
+                </button>
+              </div>
+
+              <div className="p-6 space-y-4">
+                <p className={`text-sm ${dm ? 'text-gray-300' : 'text-gray-700'}`}>
+                  정말로 구독을 취소하시겠습니까? 취소 후 프리미엄 서비스를 더 이상 이용할 수 없습니다.
+                </p>
+                <div className="flex gap-3 pt-2">
+                  <button
+                    onClick={() => setCancelModal({ ...cancelModal, isOpen: false })}
+                    disabled={cancelModal.isLoading}
+                    className={`flex-1 py-2.5 rounded-xl text-sm font-bold border transition-colors disabled:opacity-50 ${
+                      dm ? 'border-gray-700 text-gray-300 hover:bg-gray-800' : 'border-slate-200 text-gray-600 hover:bg-slate-50'
+                    }`}
+                  >
+                    취소
+                  </button>
+                  <button
+                    onClick={handleCancelSubscription}
+                    disabled={cancelModal.isLoading}
+                    className="flex-1 py-2.5 bg-red-600 hover:bg-red-700 disabled:opacity-50 text-white rounded-xl text-sm font-bold transition-colors shadow-md"
+                  >
+                    {cancelModal.isLoading ? '처리 중...' : '구독 취소'}
                   </button>
                 </div>
               </div>

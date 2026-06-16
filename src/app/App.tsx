@@ -372,6 +372,7 @@ export default function App() {
             <ArticleDetail
               articleId={selectedArticle}
               onBack={() => setCurrentView(previousView || 'analysis')}
+              darkMode={darkMode}
             />
           ) : currentView === 'notifications' ? (
             <NotificationView

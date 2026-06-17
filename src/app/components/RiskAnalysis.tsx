@@ -302,7 +302,7 @@ export function RiskAnalysis({ onBack, onArticleClick, onResultClick, onNotifica
                       <span>{text.similarity}: {item.similarity}%</span>
                     </div>
 
-                    <h4 className={`text-sm font-semibold ${darkMode ? 'text-white' : 'text-gray-900'} mb-3 leading-relaxed group-hover:text-[#142755] dark:group-hover:text-[#A9AABC] transition-colors`}>
+                    <h4 className={`text-sm font-semibold ${darkMode ? 'text-white' : 'text-gray-900'} mb-3 leading-relaxed ${darkMode ? 'group-hover:text-[#C8994B]' : 'group-hover:text-[#142755]'} transition-colors`}>
                       {item.title}
                     </h4>
 

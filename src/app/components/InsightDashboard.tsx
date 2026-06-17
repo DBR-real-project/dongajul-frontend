@@ -423,7 +423,9 @@ export function InsightDashboard({ darkMode = false, onArticleClick, onShowSeman
                     <h4
                       className={`text-sm font-bold ${
                         darkMode ? 'text-white' : 'text-gray-900'
-                      } mb-2 leading-relaxed group-hover:text-[#142755] transition-colors line-clamp-2`}
+                      } mb-2 leading-relaxed ${
+                        darkMode ? 'group-hover:text-[#C8994B]' : 'group-hover:text-[#142755]'
+                      } transition-colors line-clamp-2`}
                     >
                       {article.title}
                     </h4>
@@ -453,7 +455,9 @@ export function InsightDashboard({ darkMode = false, onArticleClick, onShowSeman
                   <ExternalLink
                     className={`w-4 h-4 flex-shrink-0 ${
                       darkMode ? 'text-gray-600' : 'text-gray-300'
-                    } group-hover:text-[#142755] transition-colors`}
+                    } ${
+                      darkMode ? 'group-hover:text-[#C8994B]' : 'group-hover:text-[#142755]'
+                    } transition-colors`}
                   />
                 </div>
 

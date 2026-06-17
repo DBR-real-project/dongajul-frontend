@@ -48,7 +48,8 @@ export function InsightDashboard({ darkMode = false, onArticleClick, onShowSeman
   const [clusters, setClusters] = useState<Cluster[]>([]);
   const [selectedCompareIds, setSelectedCompareIds] = useState<number[]>([]);
   const [loading, setLoading] = useState(true);
-  const [filter, setFilter] = useState<'all' | 'success' | 'failure'>('all');
+  // 🌟 필터 타입에 'neutral' 추가
+  const [filter, setFilter] = useState<'all' | 'success' | 'failure' | 'neutral'>('all');
   const [searchQuery, setSearchQuery] = useState('');
 
   const [statsData, setStatsData] = useState<StatsData>({
@@ -62,11 +63,8 @@ export function InsightDashboard({ darkMode = false, onArticleClick, onShowSeman
     const fetchStats = async () => {
       try {
         const res = await apiFetch('/api/articles/stats');
-
         if (!res.ok) return;
-
         const data = await res.json();
-
         setStatsData({
           total_articles: Number(data.total_articles) || 0,
           success_count: Number(data.success_count) || 0,
@@ -77,7 +75,6 @@ export function InsightDashboard({ darkMode = false, onArticleClick, onShowSeman
         console.error('통계 로드 실패:', e);
       }
     };
-
     fetchStats();
   }, []);
 
@@ -85,7 +82,6 @@ export function InsightDashboard({ darkMode = false, onArticleClick, onShowSeman
     const fetchClusters = async () => {
       try {
         const clusterRes = await apiFetch('/api/clusters');
-
         if (clusterRes.ok) {
           const clData = await clusterRes.json();
           setClusters(Array.isArray(clData) ? clData : []);
@@ -94,19 +90,18 @@ export function InsightDashboard({ darkMode = false, onArticleClick, onShowSeman
         console.error('클러스터 로드 실패:', e);
       }
     };
-
     fetchClusters();
   }, []);
 
   useEffect(() => {
     const fetchArticles = async () => {
       setLoading(true);
-
       try {
         const params = new URLSearchParams({
           limit: '20',
         });
 
+        // 🌟 필터가 'all'이 아닐 때 label 값(success, failure, neutral)을 서버에 전송
         if (filter !== 'all') {
           params.append('label', filter);
         }
@@ -116,7 +111,6 @@ export function InsightDashboard({ darkMode = false, onArticleClick, onShowSeman
         }
 
         const artRes = await apiFetch(`/api/articles?${params}`);
-
         if (artRes.ok) {
           const artData = await artRes.json();
           setArticles(Array.isArray(artData) ? artData : artData.articles || artData.data || []);
@@ -129,7 +123,6 @@ export function InsightDashboard({ darkMode = false, onArticleClick, onShowSeman
     };
 
     const timer = setTimeout(fetchArticles, 300);
-
     return () => clearTimeout(timer);
   }, [searchQuery, filter]);
 
@@ -158,7 +151,6 @@ export function InsightDashboard({ darkMode = false, onArticleClick, onShowSeman
     onShowSemanticMap(article);
   };
 
-  // 브랜드 컬러를 KPI 지표에 반영 (Navy & Gold 포인트 추가)
   const stats = [
     {
       label: 'DBR·HBR 아티클',
@@ -334,7 +326,8 @@ export function InsightDashboard({ darkMode = false, onArticleClick, onShowSeman
             )}
           </div>
           
-          {(['all', 'success', 'failure'] as const).map((f) => (
+          {/* 🌟 배열에 'neutral'을 추가하여 전체, 성공, 실패, 중립 순서대로 매핑 */}
+          {(['all', 'success', 'failure', 'neutral'] as const).map((f) => (
             <button
               key={f}
               onClick={() => setFilter(f)}
@@ -344,13 +337,16 @@ export function InsightDashboard({ darkMode = false, onArticleClick, onShowSeman
                     ? 'bg-green-500 text-white'
                     : f === 'failure'
                       ? 'bg-red-500 text-white'
-                      : 'bg-[#142755] text-white'
+                      : f === 'neutral'
+                        ? 'bg-gray-500 text-white' // 🌟 중립 버튼 활성화 시 편안한 차콜/회색 설정
+                        : 'bg-[#142755] text-white'
                   : darkMode
                     ? 'bg-gray-800 text-gray-400 border border-gray-700'
                     : 'bg-white text-gray-600 border border-gray-200'
               }`}
             >
-              {f === 'all' ? '전체' : f === 'success' ? '성공' : '실패'}
+              {/* 🌟 중립 한글 텍스트 라벨 매핑 추가 */}
+              {f === 'all' ? '전체' : f === 'success' ? '성공' : f === 'failure' ? '실패' : '중립'}
             </button>
           ))}
         </div>
@@ -423,9 +419,7 @@ export function InsightDashboard({ darkMode = false, onArticleClick, onShowSeman
                     <h4
                       className={`text-sm font-bold ${
                         darkMode ? 'text-white' : 'text-gray-900'
-                      } mb-2 leading-relaxed ${
-                        darkMode ? 'group-hover:text-[#C8994B]' : 'group-hover:text-[#142755]'
-                      } transition-colors line-clamp-2`}
+                      } mb-2 leading-relaxed group-hover:text-[#142755] transition-colors line-clamp-2`}
                     >
                       {article.title}
                     </h4>
@@ -455,9 +449,7 @@ export function InsightDashboard({ darkMode = false, onArticleClick, onShowSeman
                   <ExternalLink
                     className={`w-4 h-4 flex-shrink-0 ${
                       darkMode ? 'text-gray-600' : 'text-gray-300'
-                    } ${
-                      darkMode ? 'group-hover:text-[#C8994B]' : 'group-hover:text-[#142755]'
-                    } transition-colors`}
+                    } group-hover:text-[#142755] transition-colors`}
                   />
                 </div>
 

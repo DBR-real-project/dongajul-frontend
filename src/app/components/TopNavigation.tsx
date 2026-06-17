@@ -1,5 +1,7 @@
+'use client'; // 🌟 Next.js 클라이언트 훅 오작동 방지
+
 import { User, Moon, Sun, Bell, Home, Shield, BarChart2, History, LogOut, Map } from 'lucide-react';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react'; // 🌟 useRef 추가
 
 interface TopNavigationProps {
   currentView: string;
@@ -24,6 +26,7 @@ export function TopNavigation({
 }: TopNavigationProps) {
   const [showUserMenu, setShowUserMenu] = useState(false);
   const [isLogoutModalOpen, setIsLogoutModalOpen] = useState(false);
+  const userMenuRef = useRef<HTMLDivElement>(null); // 🌟 바깥 클릭 감지용 Ref 추가
 
   const [userName, setUserName] = useState(() => {
     if (typeof window !== 'undefined') {
@@ -73,6 +76,30 @@ export function TopNavigation({
     window.addEventListener('storage', syncFromStorage);
     return () => window.removeEventListener('storage', syncFromStorage);
   }, []);
+
+  // 🌟 [핵심 모듈] 상단 프로필 메뉴 3초 자동 닫기 및 바깥 클릭 시 닫기
+  useEffect(() => {
+    if (!showUserMenu) return;
+
+    // 1. 3초 뒤에 자동으로 꺼지는 타이머
+    const autoCloseTimer = setTimeout(() => {
+      setShowUserMenu(false);
+    }, 3000);
+
+    // 2. 프로필 메뉴 바깥 영역을 클릭하면 꺼지는 이벤트
+    const handleClickOutside = (event: MouseEvent) => {
+      if (userMenuRef.current && !userMenuRef.current.contains(event.target as Node)) {
+        setShowUserMenu(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+
+    return () => {
+      clearTimeout(autoCloseTimer);
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [showUserMenu]);
 
   const menuItems =
     language === 'ko'
@@ -136,10 +163,10 @@ export function TopNavigation({
         })}
       </nav>
 
-      {/* 🌟 우측 상단 버튼 모음 영역 (구독 버튼을 프로필 바로 옆으로 이동) */}
+      {/* 우측 상단 버튼 모음 영역 */}
       <div className="flex flex-nowrap items-center gap-2">
         
-        {/* [순서 1] 알림 벨 버튼 */}
+        {/* 1. 알림 벨 버튼 */}
         <button
           onClick={onNotificationClick}
           className={`p-2 ${darkMode ? 'hover:bg-gray-800 text-gray-400' : 'hover:bg-gray-100 text-gray-600'} rounded-lg transition-colors relative`}
@@ -149,7 +176,7 @@ export function TopNavigation({
           <span className="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full"></span>
         </button>
 
-        {/* [순서 2] 다크모드 토글 버튼 */}
+        {/* 2. 다크모드 토글 버튼 */}
         <button
           onClick={onToggleDarkMode}
           className={`p-2 ${darkMode ? 'hover:bg-gray-800 text-gray-400' : 'hover:bg-gray-100 text-gray-600'} rounded-lg transition-colors`}
@@ -158,7 +185,7 @@ export function TopNavigation({
           {darkMode ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
         </button>
 
-        {/* [순서 3] 한/영 언어 전환 버튼 */}
+        {/* 3. 한/영 언어 전환 버튼 */}
         {onToggleLanguage && (
           <button
             onClick={onToggleLanguage}
@@ -173,7 +200,7 @@ export function TopNavigation({
           </button>
         )}
 
-        {/* [순서 4] 금색 구독 버튼 (프로필 바로 왼쪽에 안착!) */}
+        {/* 4. 금색 구독 버튼 */}
         <button
           onClick={() => onViewChange('subscription')}
           className="px-4 py-2 rounded-lg text-xs font-bold transition-all shadow-md hover:opacity-90"
@@ -186,10 +213,13 @@ export function TopNavigation({
           {language === 'ko' ? '구독' : 'Upgrade'}
         </button>
 
-        {/* [순서 5] 프로필 이미지 및 드롭다운 메뉴 */}
-        <div className="relative">
+        {/* 5. 프로필 이미지 및 드롭다운 메뉴 - 🌟 감지용 ref 및 e.stopPropagation() 주입 완료 */}
+        <div className="relative" ref={userMenuRef}>
           <button
-            onClick={() => setShowUserMenu(!showUserMenu)}
+            onClick={(e) => {
+              e.stopPropagation(); // 🌟 열리자마자 바깥 클릭으로 오인되어 곧바로 닫히는 버그 방지!
+              setShowUserMenu(!showUserMenu);
+            }}
             className={`flex items-center gap-2 px-3 py-2 ${
               darkMode
                 ? 'bg-gray-800/60 hover:bg-gray-800 border border-gray-700/50'

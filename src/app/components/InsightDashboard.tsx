@@ -9,6 +9,11 @@ import {
   Clock,
   RefreshCw,
 } from 'lucide-react';
+import {
+  BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Legend,
+  PieChart, Pie, Cell,
+  LineChart, Line, CartesianGrid,
+} from 'recharts';
 import { apiFetch } from '../utils/api';
 
 interface Article {
@@ -34,6 +39,8 @@ interface StatsData {
   success_count: number;
   failure_count: number;
   cluster_count: number;
+  yearly_trend: Array<{ year: string; success: number; failure: number; neutral?: number }>;
+  category_dist: Array<{ category: string; success: number; failure: number; neutral?: number; total: number }>;
 }
 
 interface InsightDashboardProps {
@@ -48,7 +55,8 @@ export function InsightDashboard({ darkMode = false, onArticleClick, onShowSeman
   const [clusters, setClusters] = useState<Cluster[]>([]);
   const [selectedCompareIds, setSelectedCompareIds] = useState<number[]>([]);
   const [loading, setLoading] = useState(true);
-  const [filter, setFilter] = useState<'all' | 'success' | 'failure'>('all');
+  // 🌟 필터 타입에 'neutral' 추가
+  const [filter, setFilter] = useState<'all' | 'success' | 'failure' | 'neutral'>('all');
   const [searchQuery, setSearchQuery] = useState('');
 
   const [statsData, setStatsData] = useState<StatsData>({
@@ -56,6 +64,8 @@ export function InsightDashboard({ darkMode = false, onArticleClick, onShowSeman
     success_count: 0,
     failure_count: 0,
     cluster_count: 0,
+    yearly_trend: [],
+    category_dist: [],
   });
 
   useEffect(() => {
@@ -72,6 +82,8 @@ export function InsightDashboard({ darkMode = false, onArticleClick, onShowSeman
           success_count: Number(data.success_count) || 0,
           failure_count: Number(data.failure_count) || 0,
           cluster_count: Number(data.cluster_count) || 0,
+          yearly_trend: data.yearly_trend || [],
+          category_dist: data.category_dist || [],
         });
       } catch (e) {
         console.error('통계 로드 실패:', e);
@@ -107,6 +119,7 @@ export function InsightDashboard({ darkMode = false, onArticleClick, onShowSeman
           limit: '20',
         });
 
+        // 🌟 필터가 'all'이 아닐 때 label 값(success, failure, neutral)을 서버에 전송
         if (filter !== 'all') {
           params.append('label', filter);
         }
@@ -158,7 +171,6 @@ export function InsightDashboard({ darkMode = false, onArticleClick, onShowSeman
     onShowSemanticMap(article);
   };
 
-  // 브랜드 컬러를 KPI 지표에 반영 (Navy & Gold 포인트 추가)
   const stats = [
     {
       label: 'DBR·HBR 아티클',
@@ -195,6 +207,9 @@ export function InsightDashboard({ darkMode = false, onArticleClick, onShowSeman
     indigo: darkMode ? 'bg-indigo-500/10 text-indigo-400'  : 'bg-indigo-500/10 text-indigo-600',
   };
 
+  // 파이 차트의 기타(중립 포함) 항목 자동 계산
+  const remainingCount = Math.max(0, statsData.total_articles - statsData.success_count - statsData.failure_count);
+
   return (
     <div className={`h-full overflow-y-auto ${darkMode ? 'bg-[#0A0E1A]' : 'bg-[#F8FAFC]'} pb-20`}>
       <div
@@ -226,6 +241,7 @@ export function InsightDashboard({ darkMode = false, onArticleClick, onShowSeman
       </div>
 
       <div className="max-w-5xl mx-auto px-6 py-6 space-y-6">
+        {/* KPI 위젯 */}
         <div className="grid grid-cols-4 gap-4">
           {stats.map(({ label, value, icon: Icon, color }) => (
             <div
@@ -249,6 +265,105 @@ export function InsightDashboard({ darkMode = false, onArticleClick, onShowSeman
           ))}
         </div>
 
+        {/* ─── 데이터 차트 섹션 ─── */}
+        {(statsData.yearly_trend.length > 0 || statsData.category_dist.length > 0) && (
+          <div className="grid grid-cols-2 gap-4">
+
+            {/* 성공·실패 비율 파이차트 */}
+            <div className={`${darkMode ? 'bg-gray-800/50 border-gray-700/40' : 'bg-white border-gray-100'} border rounded-2xl p-5 shadow-sm`}>
+              <h3 className={`text-sm font-bold ${darkMode ? 'text-white' : 'text-gray-900'} mb-4`}>성공·실패 비율</h3>
+              <ResponsiveContainer width="100%" height={200}>
+                <PieChart>
+                  <Pie
+                    data={[
+                      { name: '성공', value: statsData.success_count },
+                      { name: '실패', value: statsData.failure_count },
+                      { name: '중립/기타', value: remainingCount },
+                    ]}
+                    cx="50%"
+                    cy="50%"
+                    innerRadius={50}
+                    outerRadius={80}
+                    dataKey="value"
+                    label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
+                    labelLine={false}
+                  >
+                    <Cell fill="#10b981" />
+                    <Cell fill="#ef4444" />
+                    <Cell fill={darkMode ? '#6b7280' : '#9ca3af'} />
+                  </Pie>
+                  <Tooltip formatter={(v: number) => v.toLocaleString()} />
+                </PieChart>
+              </ResponsiveContainer>
+            </div>
+
+            {/* 카테고리별 바차트 */}
+            <div className={`${darkMode ? 'bg-gray-800/50 border-gray-700/40' : 'bg-white border-gray-100'} border rounded-2xl p-5 shadow-sm`}>
+              <h3 className={`text-sm font-bold ${darkMode ? 'text-white' : 'text-gray-900'} mb-4`}>카테고리별 사례 분포</h3>
+              <ResponsiveContainer width="100%" height={200}>
+                <BarChart data={statsData.category_dist} layout="vertical" margin={{ left: 8, right: 16 }}>
+                  <XAxis type="number" tick={{ fontSize: 10, fill: darkMode ? '#9ca3af' : '#6b7280' }} />
+                  <YAxis type="category" dataKey="category" width={80} tick={{ fontSize: 10, fill: darkMode ? '#9ca3af' : '#6b7280' }} />
+                  <Tooltip formatter={(v: number) => v.toLocaleString()} />
+                  <Legend wrapperStyle={{ fontSize: 11 }} />
+                  <Bar dataKey="success" name="성공" fill="#10b981" radius={[0, 3, 3, 0]} />
+                  <Bar dataKey="failure" name="실패" fill="#ef4444" radius={[0, 3, 3, 0]} />
+                  {statsData.category_dist[0]?.neutral !== undefined && (
+                    <Bar dataKey="neutral" name="중립" fill={darkMode ? '#6b7280' : '#9ca3af'} radius={[0, 3, 3, 0]} />
+                  )}
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+
+            {/* 연도별 트렌드 라인차트 */}
+            <div className={`${darkMode ? 'bg-gray-800/50 border-gray-700/40' : 'bg-white border-gray-100'} border rounded-2xl p-5 shadow-sm`}>
+              <h3 className={`text-sm font-bold ${darkMode ? 'text-white' : 'text-gray-900'} mb-4`}>연도별 사례 트렌드</h3>
+              <ResponsiveContainer width="100%" height={200}>
+                <LineChart data={statsData.yearly_trend} margin={{ left: 0, right: 16 }}>
+                  <CartesianGrid strokeDasharray="3 3" stroke={darkMode ? '#374151' : '#f0f0f0'} />
+                  <XAxis dataKey="year" tick={{ fontSize: 10, fill: darkMode ? '#9ca3af' : '#6b7280' }} />
+                  <YAxis tick={{ fontSize: 10, fill: darkMode ? '#9ca3af' : '#6b7280' }} />
+                  <Tooltip formatter={(v: number) => v.toLocaleString()} />
+                  <Legend wrapperStyle={{ fontSize: 11 }} />
+                  <Line type="monotone" dataKey="success" name="성공" stroke="#10b981" strokeWidth={2} dot={false} />
+                  <Line type="monotone" dataKey="failure" name="실패" stroke="#ef4444" strokeWidth={2} dot={false} />
+                  {statsData.yearly_trend[0]?.neutral !== undefined && (
+                    <Line type="monotone" dataKey="neutral" name="중립" stroke={darkMode ? '#6b7280' : '#9ca3af'} strokeWidth={2} dot={false} />
+                  )}
+                </LineChart>
+              </ResponsiveContainer>
+            </div>
+
+            {/* Top5 성공·실패 카테고리 */}
+            <div className={`${darkMode ? 'bg-gray-800/50 border-gray-700/40' : 'bg-white border-gray-100'} border rounded-2xl p-5 shadow-sm`}>
+              <h3 className={`text-sm font-bold ${darkMode ? 'text-white' : 'text-gray-900'} mb-4`}>성공·실패 Top 5 카테고리</h3>
+              <ResponsiveContainer width="100%" height={200}>
+                <BarChart
+                  data={statsData.category_dist.slice(0, 5).map(c => ({
+                    category: c.category,
+                    성공: c.success,
+                    실패: c.failure,
+                    ...(c.neutral !== undefined && { 중립: c.neutral })
+                  }))}
+                  layout="vertical"
+                  margin={{ left: 8, right: 16 }}
+                >
+                  <XAxis type="number" tick={{ fontSize: 10, fill: darkMode ? '#9ca3af' : '#6b7280' }} />
+                  <YAxis type="category" dataKey="category" width={80} tick={{ fontSize: 10, fill: darkMode ? '#9ca3af' : '#6b7280' }} />
+                  <Tooltip formatter={(v: number) => v.toLocaleString()} />
+                  <Legend wrapperStyle={{ fontSize: 11 }} />
+                  <Bar dataKey="성공" fill="#10b981" radius={[0, 3, 3, 0]} />
+                  <Bar dataKey="실패" fill="#ef4444" radius={[0, 3, 3, 0]} />
+                  {statsData.category_dist[0]?.neutral !== undefined && (
+                    <Bar dataKey="중립" fill={darkMode ? '#6b7280' : '#9ca3af'} radius={[0, 3, 3, 0]} />
+                  )}
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+          </div>
+        )}
+
+        {/* 전략 클러스터 섹션 */}
         {clusters.length > 0 && (
           <div
             className={`${
@@ -300,6 +415,7 @@ export function InsightDashboard({ darkMode = false, onArticleClick, onShowSeman
           </div>
         )}
 
+        {/* 컨트롤바 (검색 및 필터링 버튼군) */}
         <div className="flex items-center gap-3">
           <div
             className={`flex-1 flex items-center gap-2 px-4 py-2.5 rounded-xl border ${
@@ -334,7 +450,8 @@ export function InsightDashboard({ darkMode = false, onArticleClick, onShowSeman
             )}
           </div>
           
-          {(['all', 'success', 'failure'] as const).map((f) => (
+          {/* 🌟 배열에 'neutral'을 추가하여 전체, 성공, 실패, 중립 순서대로 매핑 */}
+          {((['all', 'success', 'failure', 'neutral'] as const)).map((f) => (
             <button
               key={f}
               onClick={() => setFilter(f)}
@@ -344,17 +461,21 @@ export function InsightDashboard({ darkMode = false, onArticleClick, onShowSeman
                     ? 'bg-green-500 text-white'
                     : f === 'failure'
                       ? 'bg-red-500 text-white'
-                      : 'bg-[#142755] text-white'
+                      : f === 'neutral'
+                        ? 'bg-gray-500 text-white' // 🌟 중립 버튼 활성화 시 편안한 차콜/회색 설정
+                        : 'bg-[#142755] text-white'
                   : darkMode
                     ? 'bg-gray-800 text-gray-400 border border-gray-700'
                     : 'bg-white text-gray-600 border border-gray-200'
               }`}
             >
-              {f === 'all' ? '전체' : f === 'success' ? '성공' : '실패'}
+              {/* 🌟 중립 한글 텍스트 라벨 매핑 추가 */}
+              {f === 'all' ? '전체' : f === 'success' ? '성공' : f === 'failure' ? '실패' : '중립'}
             </button>
           ))}
         </div>
 
+        {/* 아티클 리스트 렌더링 */}
         {loading ? (
           <div className="flex items-center justify-center py-16">
             <div className="w-8 h-8 border-4 border-[#E1B764] border-t-transparent rounded-full animate-spin" />

@@ -1,5 +1,7 @@
+'use client'; // 🌟 Next.js 클라이언트 훅 오작동 방지
+
 import { User, Moon, Sun, Bell, Home, Shield, BarChart2, History, LogOut, Map } from 'lucide-react';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react'; // 🌟 useRef 추가
 
 interface TopNavigationProps {
   currentView: string;
@@ -24,6 +26,7 @@ export function TopNavigation({
 }: TopNavigationProps) {
   const [showUserMenu, setShowUserMenu] = useState(false);
   const [isLogoutModalOpen, setIsLogoutModalOpen] = useState(false);
+  const userMenuRef = useRef<HTMLDivElement>(null); // 🌟 바깥 클릭 감지용 Ref 추가
 
   const [userName, setUserName] = useState(() => {
     if (typeof window !== 'undefined') {
@@ -57,7 +60,6 @@ export function TopNavigation({
 
   useEffect(() => {
     const syncFromStorage = () => {
-      // 닉네임 동기화
       const user = localStorage.getItem('user');
       if (user) {
         try {
@@ -67,7 +69,6 @@ export function TopNavigation({
           setUserName(localStorage.getItem('userName') || '사용자');
         }
       }
-      // 계정별 프로필 사진 동기화
       setProfileImage(getProfileImgFromStorage());
     };
 
@@ -75,6 +76,30 @@ export function TopNavigation({
     window.addEventListener('storage', syncFromStorage);
     return () => window.removeEventListener('storage', syncFromStorage);
   }, []);
+
+  // 🌟 [핵심 모듈] 상단 프로필 메뉴 3초 자동 닫기 및 바깥 클릭 시 닫기
+  useEffect(() => {
+    if (!showUserMenu) return;
+
+    // 1. 3초 뒤에 자동으로 꺼지는 타이머
+    const autoCloseTimer = setTimeout(() => {
+      setShowUserMenu(false);
+    }, 3000);
+
+    // 2. 프로필 메뉴 바깥 영역을 클릭하면 꺼지는 이벤트
+    const handleClickOutside = (event: MouseEvent) => {
+      if (userMenuRef.current && !userMenuRef.current.contains(event.target as Node)) {
+        setShowUserMenu(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+
+    return () => {
+      clearTimeout(autoCloseTimer);
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [showUserMenu]);
 
   const menuItems =
     language === 'ko'
@@ -100,7 +125,9 @@ export function TopNavigation({
   };
 
   return (
-    <div className={`w-full h-16 ${darkMode ? 'bg-[#0A0E1A] border-gray-800/50' : 'bg-white border-gray-200'} border-b flex flex-nowrap items-center justify-between px-6 shadow-sm sticky top-0 z-50`}>
+    <div className={`w-full h-16 ${darkMode ? 'bg-[#0A0E1A]' : 'bg-white'} border-b ${darkMode ? 'border-gray-800/50' : 'border-gray-200'} flex flex-nowrap items-center justify-between px-6 shadow-sm sticky top-0 z-50`}>
+      
+      {/* 로고 영역 */}
       <button
         type="button"
         onClick={() => onViewChange('dashboard')}
@@ -114,10 +141,10 @@ export function TopNavigation({
         />
       </button>
 
+      {/* 중앙 내비게이션 메뉴 */}
       <nav className="flex flex-nowrap items-center gap-1 overflow-x-auto scrollbar-hide flex-1 mr-4">
         {menuItems.map((item) => {
           const isActive = currentView === item.id;
-
           return (
             <button
               key={item.id}
@@ -136,7 +163,10 @@ export function TopNavigation({
         })}
       </nav>
 
+      {/* 우측 상단 버튼 모음 영역 */}
       <div className="flex flex-nowrap items-center gap-2">
+        
+        {/* 1. 알림 벨 버튼 */}
         <button
           onClick={onNotificationClick}
           className={`p-2 ${darkMode ? 'hover:bg-gray-800 text-gray-400' : 'hover:bg-gray-100 text-gray-600'} rounded-lg transition-colors relative`}
@@ -146,19 +176,7 @@ export function TopNavigation({
           <span className="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full"></span>
         </button>
 
-        {/* 💡 강제로 금색이 적용되도록 인라인 스타일(style 속성)을 추가한 버튼입니다. */}
-        <button
-          onClick={() => onViewChange('subscription')}
-          className="px-4 py-2 rounded-lg text-xs font-bold transition-all shadow-md hover:opacity-90"
-          style={{
-            background: 'linear-gradient(to right, #C9A84B, #B58F31)',
-            border: '1px solid #B58F31',
-            color: '#162238'
-          }}
-        >
-          {language === 'ko' ? '구독' : 'Upgrade'}
-        </button>
-
+        {/* 2. 다크모드 토글 버튼 */}
         <button
           onClick={onToggleDarkMode}
           className={`p-2 ${darkMode ? 'hover:bg-gray-800 text-gray-400' : 'hover:bg-gray-100 text-gray-600'} rounded-lg transition-colors`}
@@ -167,6 +185,7 @@ export function TopNavigation({
           {darkMode ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
         </button>
 
+        {/* 3. 한/영 언어 전환 버튼 */}
         {onToggleLanguage && (
           <button
             onClick={onToggleLanguage}
@@ -181,9 +200,26 @@ export function TopNavigation({
           </button>
         )}
 
-        <div className="relative">
+        {/* 4. 금색 구독 버튼 */}
+        <button
+          onClick={() => onViewChange('subscription')}
+          className="px-4 py-2 rounded-lg text-xs font-bold transition-all shadow-md hover:opacity-90"
+          style={{
+            background: 'linear-gradient(to right, #C9A84B, #B58F31)',
+            border: '1px solid #B58F31',
+            color: '#162238'
+          }}
+        >
+          {language === 'ko' ? '구독' : 'Upgrade'}
+        </button>
+
+        {/* 5. 프로필 이미지 및 드롭다운 메뉴 - 🌟 감지용 ref 및 e.stopPropagation() 주입 완료 */}
+        <div className="relative" ref={userMenuRef}>
           <button
-            onClick={() => setShowUserMenu(!showUserMenu)}
+            onClick={(e) => {
+              e.stopPropagation(); // 🌟 열리자마자 바깥 클릭으로 오인되어 곧바로 닫히는 버그 방지!
+              setShowUserMenu(!showUserMenu);
+            }}
             className={`flex items-center gap-2 px-3 py-2 ${
               darkMode
                 ? 'bg-gray-800/60 hover:bg-gray-800 border border-gray-700/50'
@@ -242,13 +278,13 @@ export function TopNavigation({
         </div>
       </div>
 
+      {/* 로그아웃 확인 모달 */}
       {isLogoutModalOpen && (
         <div className="fixed inset-0 z-[999] flex items-center justify-center p-4">
           <div
             className="absolute inset-0 bg-gray-900/60 backdrop-blur-sm transition-opacity"
             onClick={() => setIsLogoutModalOpen(false)}
           />
-
           <div
             className={`relative transform overflow-hidden rounded-2xl ${
               darkMode
@@ -260,7 +296,6 @@ export function TopNavigation({
               <div className="mx-auto flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-red-50 dark:bg-red-500/10 text-red-500 sm:mx-0 sm:h-10 sm:w-10">
                 <LogOut className="h-5 w-5" />
               </div>
-
               <div className="mt-1 text-left sm:ml-1">
                 <h3 className="text-base font-bold leading-6">
                   {language === 'ko' ? '로그아웃' : 'Account Logout'}
@@ -274,7 +309,6 @@ export function TopNavigation({
                 </div>
               </div>
             </div>
-
             <div className="mt-6 flex flex-row-reverse gap-2">
               <button
                 type="button"
@@ -283,14 +317,11 @@ export function TopNavigation({
               >
                 {language === 'ko' ? '로그아웃' : 'Logout'}
               </button>
-
               <button
                 type="button"
                 onClick={() => setIsLogoutModalOpen(false)}
                 className={`inline-flex justify-center rounded-xl ${
-                  darkMode
-                    ? 'bg-gray-800 hover:bg-gray-700 text-gray-300'
-                    : 'bg-gray-100 hover:bg-gray-200 text-gray-700'
+                  darkMode ? 'bg-gray-800 hover:bg-gray-700 text-gray-300' : 'bg-gray-100 hover:bg-gray-200 text-gray-700'
                 } active:scale-95 px-4 py-2.5 text-xs font-bold transition-all`}
               >
                 {language === 'ko' ? '취소' : 'Cancel'}

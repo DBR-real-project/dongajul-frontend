@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 
 import { useState, useEffect, FormEvent } from 'react';
 import { useArticleCount } from '../utils/articleCount';
@@ -15,6 +15,9 @@ export function SubscriptionPage({ onStartBasic, onSubscribe, darkMode = false }
   const dm = darkMode;
   const [currentPlan, setCurrentPlan] = useState<string>('free');
   const [showContactModal, setShowContactModal] = useState(false);
+  
+  // 🌟 [추가 상태] 투박한 윈도우 alert창(image_c0ea2d.png)을 대체할 커스텀 알림창 제어 State
+  const [showSuccessAlert, setShowSuccessAlert] = useState(false);
   const [contactForm, setContactForm] = useState({ name: '', email: '', message: '' });
 
   useEffect(() => {
@@ -26,8 +29,12 @@ export function SubscriptionPage({ onStartBasic, onSubscribe, darkMode = false }
 
   const handleContactSubmit = (e: FormEvent) => {
     e.preventDefault();
-    alert('동아줄 영업팀에 문의가 성공적으로 전달되었습니다. 담당자가 곧 연락드리겠습니다!');
+    
+    // 걷어내기: 기존의 브라우저 기본 내장 alert() 문구 완전 박멸
+    // 활성화: 문의 모달을 닫고, 동아줄 전용 다크 스킨 알림창을 화면에 렌더링합니다.
     setShowContactModal(false);
+    setShowSuccessAlert(true); 
+    
     setContactForm({ name: '', email: '', message: '' });
   };
 
@@ -78,10 +85,9 @@ export function SubscriptionPage({ onStartBasic, onSubscribe, darkMode = false }
           </ul>
         </div>
 
-        {/* 2. Premium 플랜 */}
+        {/* 2. Premium 플랜 (형님이 깎아둔 원본 가이드 라인 100% 보존 구역) */}
         <div className={`relative w-[350px] p-[1.5px] rounded-[26px] bg-gradient-to-b ${dm ? 'from-[#E5BA73] to-transparent' : 'from-[#E5BA73] via-gray-200 to-transparent'} shadow-2xl z-10 transition-all duration-300 hover:-translate-y-3 hover:shadow-[0_20px_40px_-15px_rgba(229,186,115,0.15)] cursor-pointer`}>
           
-          {/* 🌟 배너 텍스트를 "DONG-A PREMIUM"으로 변경하고 패딩과 자간 최적화 */}
           <div className="absolute -top-3 right-6 z-20 bg-gradient-to-r from-[#E5BA73] via-[#F3D596] to-[#C8994B] text-[#060B16] text-[9px] font-black px-3 py-0.5 rounded-full shadow-[0_3px_10px_rgba(229,186,115,0.4)] tracking-wide select-none uppercase">
             DONG-A PREMIUM
           </div>
@@ -89,7 +95,7 @@ export function SubscriptionPage({ onStartBasic, onSubscribe, darkMode = false }
           <div className={`p-8 rounded-[24px] h-full flex flex-col ${dm ? 'bg-[#111827]' : 'bg-white'}`}>
             <div className="flex items-center gap-2 mb-4">
               
-              {/* 커스텀 골드 스타 남색 메달 인라인 SVG */}
+              {/* 복구 완료: 커스텀 골드 스타 남색 메달 인라인 SVG */}
               <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" className="w-6 h-6 select-none shrink-0">
                 <circle cx="12" cy="12" r="10.5" fill="#142755" stroke="#E5BA73" strokeWidth="1.2" />
                 <path d="M8.5 8.5L15.5 14.5M15.5 8.5L8.5 14.5" stroke="#E5BA73" strokeWidth="0.8" strokeLinecap="round" opacity="0.8" />
@@ -108,7 +114,6 @@ export function SubscriptionPage({ onStartBasic, onSubscribe, darkMode = false }
               ₩9,900 <span className={`text-lg font-normal ${dm ? 'text-gray-500' : 'text-gray-400'}`}>/ 월</span>
             </div>
             
-            {/* 고급진 금색 그라데이션 및 네이비 텍스트 버튼 */}
             <button
               onClick={currentPlan === 'premium' ? undefined : onSubscribe}
               disabled={currentPlan === 'premium'}
@@ -212,7 +217,7 @@ export function SubscriptionPage({ onStartBasic, onSubscribe, darkMode = false }
 
                   <form onSubmit={handleContactSubmit} className="space-y-3.5">
                     <div>
-                      <label className="block mb-1 text-xs text-slate-700 font-bold">회사명 / 이름 *</label>
+                      <label className="block mb-1.5 text-xs text-slate-700 font-bold">회사명 / 이름 *</label>
                       <input
                         type="text"
                         required
@@ -223,7 +228,7 @@ export function SubscriptionPage({ onStartBasic, onSubscribe, darkMode = false }
                       />
                     </div>
                     <div>
-                      <label className="block mb-1 text-xs text-slate-700 font-bold">회신받을 이메일 *</label>
+                      <label className="block mb-1.5 text-xs text-slate-700 font-bold">회신받을 이메일 *</label>
                       <input
                         type="email"
                         required
@@ -234,7 +239,7 @@ export function SubscriptionPage({ onStartBasic, onSubscribe, darkMode = false }
                       />
                     </div>
                     <div>
-                      <label className="block mb-1 text-xs text-slate-700 font-bold">문의 내용 *</label>
+                      <label className="block mb-1.5 text-xs text-slate-700 font-bold">문의 내용 *</label>
                       <textarea
                         required
                         rows={3}
@@ -254,6 +259,41 @@ export function SubscriptionPage({ onStartBasic, onSubscribe, darkMode = false }
                 </div>
               </div>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* 🌟 [신규 삽입] image_c0ea2d.png의 기본 브라우저 알림창을 완벽히 박멸하는 동아줄 전용 프리미엄 알림창 */}
+      {showSuccessAlert && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/70 backdrop-blur-md transition-all duration-300">
+          <div className="relative w-full max-w-sm bg-[#0D1527] border border-[#E5BA73]/20 rounded-[22px] p-7 text-center shadow-[0_20px_60px_rgba(0,0,0,0.65)] overflow-hidden">
+            
+            {/* 은하수 중심핵 테마 광원 그라데이션 소스 */}
+            <div className="absolute top-0 left-1/2 -translate-x-1/2 w-40 h-20 bg-[#E5BA73]/10 rounded-full blur-2xl pointer-events-none"></div>
+
+            {/* 네온 성공 체크 아이콘 랙 */}
+            <div className="mx-auto w-12 h-12 rounded-full bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center mb-4">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path d="M20 6L9 17L4 12" stroke="#10B981" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>
+              </svg>
+            </div>
+
+            {/* 시스템 노티 헤더 명세 */}
+            <span className="text-[10px] font-black text-[#E5BA73] tracking-widest uppercase block mb-1">Notice</span>
+            <h3 className="text-base font-extrabold text-white mb-2 tracking-tight">전달 완료</h3>
+            <p className="text-xs md:text-sm text-slate-300 leading-relaxed font-light mb-6">
+              동아줄 영업팀에 문의가 성공적으로 전달되었습니다.<br />
+              담당자가 확인 후 곧 연락드리겠습니다!
+            </p>
+
+            {/* 윈도우 투박한 확인 버튼을 대체하는 고대비 골드 그라데이션 단추 */}
+            <button
+              type="button"
+              onClick={() => setShowSuccessAlert(false)}
+              className="w-full bg-gradient-to-r from-[#E5BA73] to-[#C8994B] text-[#060B16] py-2.5 rounded-xl font-black text-xs tracking-wider uppercase shadow-[0_4px_12px_rgba(229,186,115,0.2)] hover:shadow-[0_6px_18px_rgba(229,186,115,0.35)] hover:opacity-95 active:scale-[0.98] transition-all"
+            >
+              확인
+            </button>
           </div>
         </div>
       )}

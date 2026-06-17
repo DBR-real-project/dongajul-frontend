@@ -110,7 +110,7 @@ export function SearchHistory({ onResultByIdClick, darkMode = false }: SearchHis
                       {item.input_text}
                     </p>
                   </div>
-                  <ChevronRight className={`w-5 h-5 flex-shrink-0 ${darkMode ? 'text-gray-600' : 'text-gray-300'} group-hover:text-[#142755] transition-colors mt-1`} />
+                  <ChevronRight className={`w-5 h-5 flex-shrink-0 ${darkMode ? 'text-gray-600' : 'text-gray-300'} ${darkMode ? 'group-hover:text-[#C8994B]' : 'group-hover:text-[#142755]'} transition-colors mt-1`} />
                 </div>
               </div>
             );

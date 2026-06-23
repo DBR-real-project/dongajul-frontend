@@ -17,6 +17,7 @@ import { SemanticMap } from './components/SemanticMap';
 import { SubscriptionPage } from './components/SubscriptionPage';
 import { CheckoutPage } from './components/CheckoutPage';
 import { AIChatbot } from './components/AIChatbot';
+import { HelpGuide } from './components/HelpGuide';
 import { BASE_URL } from './utils/api';
 
 export type ViewType =
@@ -32,6 +33,7 @@ export type ViewType =
   | 'profile'
   | 'result'
   | 'semantic-map'
+  | 'help'
   | 'subscription'
   | 'checkout';
 
@@ -49,6 +51,7 @@ const VIEW_PATHS: Record<ViewType, string> = {
   notifications: '/notifications',
   profile:      '/profile',
   settings:     '/settings',
+  help:         '/help',
   subscription: '/subscription',
   checkout:     '/checkout',
 };
@@ -100,8 +103,10 @@ export default function App() {
 
   // 브라우저 뒤로/앞으로 가기 처리
   useEffect(() => {
-    // 초기 history 엔트리에 view 정보 주입 (없으면 replaceState)
-    if (!window.history.state?.view) {
+    // 소셜 로그인 콜백 중(URL에 token/error 파라미터 있음)이면 replaceState 건너뜀
+    // → 소셜 콜백 useEffect가 ?token= 파라미터를 읽을 수 있도록 보존
+    const _cbParams = new URLSearchParams(window.location.search);
+    if (!_cbParams.get('token') && !_cbParams.get('error') && !window.history.state?.view) {
       window.history.replaceState(
         { view: currentView, depth: 0 },
         '',
@@ -122,10 +127,32 @@ export default function App() {
     localStorage.setItem('darkMode', JSON.stringify(darkMode));
   }, [darkMode]);
 
-  // 소셜 로그인 콜백 토큰 처리
+  const [socialLoginError] = useState<string>(() => {
+    const params = new URLSearchParams(window.location.search);
+    const errorCode = params.get('error');
+    if (!errorCode) return '';
+    const providerMap: Record<string, string> = {
+      kakao_login_failed: '카카오',
+      google_login_failed: '구글',
+      naver_login_failed: '네이버',
+    };
+    const provider = providerMap[errorCode] || '소셜';
+    return `${provider} 로그인에 실패했습니다. 잠시 후 다시 시도해 주세요.`;
+  });
+
+  // 소셜 로그인 콜백 토큰/에러 처리
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const token = params.get('token');
+    const errorCode = params.get('error');
+    console.log('[소셜콜백] URL:', window.location.href);
+    console.log('[소셜콜백] token:', token ? '있음' : '없음', '| error:', errorCode);
+
+    // 에러 파라미터: URL만 정리 (메시지는 useState 초기값에서 이미 처리)
+    if (errorCode) {
+      window.history.replaceState({ view: 'dashboard', depth: 0 }, '', '/');
+      return;
+    }
 
     if (!token) return;
 
@@ -164,6 +191,7 @@ export default function App() {
       }
 
       setIsLoggedIn(true);
+      setCurrentView('dashboard');
       window.history.replaceState({ view: 'dashboard', depth: 0 }, '', '/');
     } catch (e) {
       // 토큰 자체가 손상된 경우에만 제거
@@ -364,6 +392,7 @@ export default function App() {
         onSocialLogin={handleSocialLogin}
         onSignupClick={() => setShowSignup(true)}
         onForgotPassword={() => { }}
+        socialLoginError={socialLoginError}
       />
     );
   }
@@ -448,6 +477,8 @@ export default function App() {
               highlightArticleId={semanticHighlightArticleId}
               highlightClusterId={semanticHighlightClusterId}
             />
+          ) : currentView === 'help' ? (
+            <HelpGuide darkMode={darkMode} onNavigate={(v) => navigateTo(v as ViewType)} />
           ) : currentView === 'article' && selectedArticle !== null ? (
             <ArticleDetail
               articleId={selectedArticle}
